@@ -4169,6 +4169,17 @@ function initUI() {
   });
   $id('btnReset').addEventListener('click', () => goView(CAMS.view));
   $id('btnShot').addEventListener('click', () => { R.shotPending = true; });
+  // inside the claude.ai viewer, saving goes through its downloads capability;
+  // a standalone copy keeps the plain download link
+  if (window.claude && typeof window.claude.use === 'function') {
+    window.claude.use('downloads').then((d) => { UI.downloads = d; }).catch(() => {});
+  }
+  $id('shotDl').addEventListener('click', async (e) => {
+    if (!UI.downloads || !UI.shotBlob) return;
+    e.preventDefault();
+    try { await UI.downloads.save({ filename: $id('shotDl').download, data: UI.shotBlob }); toast('画面已保存', 1600); }
+    catch (err) { if (err && err.code !== 'declined') toast('当前环境无法保存文件，可长按或右键图片另存'); }
+  });
   $id('shotClose').addEventListener('click', closeShot);
   $id('shot').addEventListener('click', (e) => { if (e.target.id === 'shot') closeShot(); });
   $id('btnHide').addEventListener('click', () => setUIHidden(true));
@@ -4221,6 +4232,7 @@ function captureShot() {
   const canvas = R.renderer.domElement;
   const done = (blob) => {
     if (!blob) { toast('截图失败，请重试'); return; }
+    UI.shotBlob = blob;
     const url = URL.createObjectURL(blob);
     const img = $id('shotImg');
     img.src = url; img.dataset.url = url;
